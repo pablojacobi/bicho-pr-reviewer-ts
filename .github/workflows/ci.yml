@@ -31,6 +31,15 @@ jobs:
         run: npm run typecheck
       - name: Tests + coverage (100% gate)
         run: npm test
+      - name: Smoke — the app builds and its OpenAPI schema serializes
+        run: |
+          npm run build
+          node --input-type=module -e "
+            const { createApp } = await import('./dist/api/app.js');
+            const app = await createApp();
+            JSON.stringify(app.swagger());
+            await app.close();
+          "
 
   dependencies:
     name: Dependency audit
