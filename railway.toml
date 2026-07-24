@@ -1,0 +1,14 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "node dist/main.js"
+healthcheckPath = "/healthz"
+healthcheckTimeout = 30
+# Background reviews are in-process and non-durable, so a restart drops in-flight work. Restarting
+# on failure is still the right default: the next webhook, or the manual endpoint, recovers it.
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+# A single instance by design — see docs/adr/0004 and docs/limitations.md.
+numReplicas = 1

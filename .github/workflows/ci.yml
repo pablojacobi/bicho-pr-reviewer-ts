@@ -52,3 +52,11 @@ jobs:
           cache: npm
       - name: Audit dependencies for known vulnerabilities
         run: npm audit --audit-level=high
+
+  docker:
+    name: Docker build smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build image
+        run: docker build --tag bicho-pr-reviewer:ci .
