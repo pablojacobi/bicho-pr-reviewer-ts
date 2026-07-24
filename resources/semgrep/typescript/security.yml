@@ -1,0 +1,96 @@
+rules:
+  - id: typescript.security.eval-with-dynamic-value
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      `eval()` compiles and executes its argument as code. Here the argument is not a fixed string
+      literal — a variable, a template literal, or some other expression — so if an attacker can
+      influence that value, this is arbitrary code execution. Replace `eval()` with a safe
+      alternative: `JSON.parse` for data, a real parser/interpreter for expressions, or refactor the
+      logic so no code needs to be built at runtime at all.
+    patterns:
+      - pattern: eval($EXPR)
+      - pattern-not: eval("...")
+    metadata:
+      category: security
+      cwe: "CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')"
+      owasp: "A03:2021 - Injection"
+      references:
+        - https://owasp.org/www-community/attacks/Code_Injection
+
+  - id: typescript.security.exec-shell-injection
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      `child_process.exec`/`execSync` run their command through `/bin/sh`, so any command string
+      that is not a fixed literal — built with a template literal, string concatenation, or passed
+      through from a variable — lets an attacker who influences that value inject arbitrary shell
+      commands. Use `execFile`/`execFileSync` (or `spawn` with an argument array and no shell)
+      instead: they take the executable and its arguments separately and never invoke a shell.
+    patterns:
+      - pattern-either:
+          - pattern: child_process.exec($CMD, ...)
+          - pattern: child_process.execSync($CMD, ...)
+          - pattern: exec($CMD, ...)
+          - pattern: execSync($CMD, ...)
+      - pattern-not: child_process.exec("...", ...)
+      - pattern-not: child_process.execSync("...", ...)
+      - pattern-not: exec("...", ...)
+      - pattern-not: execSync("...", ...)
+    metadata:
+      category: security
+      cwe: "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      owasp: "A03:2021 - Injection"
+      references:
+        - https://nodejs.org/api/child_process.html#child_processexecfilefile-args-options-callback
+
+  - id: typescript.security.new-function-constructor
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      `new Function(...)` compiles and executes its string arguments as code — the same risk as
+      `eval()`, but easier to miss in review because it reads like an ordinary constructor call. If
+      any argument can be influenced by user input, this is arbitrary code execution. Avoid the
+      `Function` constructor; write a named function instead, or use a safe parser/interpreter if the
+      logic genuinely needs to be data-driven.
+    pattern: new Function(...)
+    metadata:
+      category: security
+      cwe: "CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')"
+      owasp: "A03:2021 - Injection"
+
+  - id: typescript.security.innerhtml-assignment
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      Assigning to `.innerHTML` from a variable inserts its value as raw, parsed HTML. If that value
+      can contain attacker-influenced text — user input, an API response, a URL parameter — this is a
+      cross-site scripting vulnerability: any `<script>` or event handler in the string executes in
+      the page's origin. Use `.textContent` when you only need plain text, or sanitize the HTML (e.g.
+      with DOMPurify) before assigning it.
+    patterns:
+      - pattern: $EL.innerHTML = $VALUE
+      - pattern-not: $EL.innerHTML = "..."
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+
+  - id: typescript.security.tls-reject-unauthorized-disabled
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Setting `rejectUnauthorized: false` disables TLS certificate validation for this request or
+      agent, so the client will accept *any* certificate — including one presented by an attacker
+      performing a man-in-the-middle attack. Remove the option (the default, `true`, is what you
+      want) and fix the underlying certificate problem instead, e.g. by supplying a proper CA bundle
+      through `ca:` or fixing the server's certificate chain.
+    pattern-either:
+      - pattern: 'https.request({ ..., rejectUnauthorized: false, ... }, ...)'
+      - pattern: 'https.get({ ..., rejectUnauthorized: false, ... }, ...)'
+      - pattern: 'new https.Agent({ ..., rejectUnauthorized: false, ... })'
+      - pattern: 'new tls.TLSSocket($SOCKET, { ..., rejectUnauthorized: false, ... })'
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+      owasp: "A02:2021 - Cryptographic Failures"
